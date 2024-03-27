@@ -6,7 +6,7 @@ const path = require('path');
 const staticRoutes = require('./routes/staticRouter');
 const userRoutes = require('./routes/user');
 const cookieParser = require('cookie-parser');
-const { restrictToLoggedinUserOnly, checkAuth } = require('./middlewares/auth');
+const { restrictToLoggedinUserOnly, restrictTo } = require('./middlewares/auth');
 
 
 
@@ -22,6 +22,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
+// authorize to hamesa hoga hi, but then work is performed accoring to the roles only 
+app.use(restrictToLoggedinUserOnly);
+
+
 // either we can send the whole html here only, but this will be very bulky
 // so we use a templating engine that perform server side rendering 
 app.set('view engine', 'ejs'); // setting the ejs 
@@ -30,8 +34,8 @@ app.set('views', path.resolve('./views')); // giving the path of ejs files
 
 // if we want to work on /url, then we require to be logged in always 
 // this is an inline middleware, that will be executed for this list of urls only 
-app.use('/url', restrictToLoggedinUserOnly, urlRoutes);
-app.use('/', checkAuth, staticRoutes);
+app.use('/', staticRoutes);
+app.use('/url', restrictTo(["normal"]) ,urlRoutes);
 app.use('/user', userRoutes);
 
 
