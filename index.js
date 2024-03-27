@@ -4,6 +4,10 @@ const { connectToMongo } = require('./connections/connect');
 const URL = require('./models/url');
 const path = require('path');
 const staticRoutes = require('./routes/staticRouter');
+const userRoutes = require('./routes/user');
+const cookieParser = require('cookie-parser');
+const { restrictToLoggedinUserOnly, checkAuth } = require('./middlewares/auth');
+
 
 
 const app = express();
@@ -16,6 +20,7 @@ connectToMongo(mongoUrl).then(() => console.log("Mongodb connected !")).catch(er
 app.use(express.json());
 // to parse form data, we use urlEncoded 
 app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
 
 // either we can send the whole html here only, but this will be very bulky
 // so we use a templating engine that perform server side rendering 
@@ -23,23 +28,20 @@ app.set('view engine', 'ejs'); // setting the ejs
 app.set('views', path.resolve('./views')); // giving the path of ejs files 
 
 
-app.use('/url', urlRoutes);
-app.use('/', staticRoutes);
-app.get('/test', async (req, res) => {
-    const allUrls = await URL.find({});
-    return res.render('home', {
-        // sending variables 
-        urls: allUrls,
-    }); // render the home.ejs like this 
-})
+// if we want to work on /url, then we require to be logged in always 
+// this is an inline middleware, that will be executed for this list of urls only 
+app.use('/url', restrictToLoggedinUserOnly, urlRoutes);
+app.use('/', checkAuth, staticRoutes);
+app.use('/user', userRoutes);
+
 
 // with the help of shortid, i want to go to that original website 
 app.get('/url/:shortId', async (req, res) => {
     // using that id, fetch the redirect url from database 
-    const shortId = req.params.shortId;
+    const shortid = req.params.shortId;
     // find and update because whenever i will find id i need to increase the clicks by adding the time 
     const entry = await URL.findOneAndUpdate({
-        shortId, 
+        shortid, 
     }, { $push : {
         visitHistory: {
             timestamp: Date.now(),
